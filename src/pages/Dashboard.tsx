@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, Edit, Trash2, Library, BookMarked, Users, BarChart3, ArrowUpDown, Clock, LogOut, User } from "lucide-react";
+import { BookOpen, Plus, Search, Edit, Trash2, Library, BookMarked, Users, BarChart3, ArrowUpDown, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
 
 interface Book {
   id: string;
@@ -18,7 +16,6 @@ interface Book {
   title: string;
   author: string;
   genre: string;
-  description: string;
   status: "Available" | "Issued";
   dateAdded: string;
   lastUpdated: string;
@@ -52,7 +49,6 @@ const Dashboard = () => {
     title: "",
     author: "",
     genre: "",
-    description: "",
     status: "Available" as "Available" | "Issued"
   });
 
@@ -70,16 +66,16 @@ const Dashboard = () => {
   }, [books]);
 
   const resetForm = () => {
-    setFormData({ isbn: "", title: "", author: "", genre: "", description: "", status: "Available" });
+    setFormData({ isbn: "", title: "", author: "", genre: "", status: "Available" });
     setEditingBook(null);
   };
 
   const handleAddBook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.isbn || !formData.title || !formData.author || !formData.genre || !formData.description) {
+    if (!formData.isbn || !formData.title || !formData.author || !formData.genre) {
       toast({
         title: "Error",
-        description: "Please fill in all fields including ISBN and description",
+        description: "Please fill in all fields including ISBN",
         variant: "destructive"
       });
       return;
@@ -105,10 +101,10 @@ const Dashboard = () => {
 
   const handleEditBook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingBook || !formData.isbn || !formData.title || !formData.author || !formData.genre || !formData.description) {
+    if (!editingBook || !formData.isbn || !formData.title || !formData.author || !formData.genre) {
       toast({
         title: "Error",
-        description: "Please fill in all fields including ISBN and description",
+        description: "Please fill in all fields including ISBN",
         variant: "destructive"
       });
       return;
@@ -143,7 +139,6 @@ const Dashboard = () => {
       title: book.title,
       author: book.author,
       genre: book.genre,
-      description: book.description,
       status: book.status
     });
   };
@@ -179,54 +174,22 @@ const Dashboard = () => {
     genres: new Set(books.map(b => b.genre)).size
   };
 
-  // Chart data
-  const pieData = [
-    { name: 'Available', value: stats.available, color: '#10b981' },
-    { name: 'Issued', value: stats.issued, color: '#f59e0b' }
-  ];
-
-  const genreData = GENRES.map(genre => ({
-    genre,
-    count: books.filter(b => b.genre === genre).length
-  })).filter(item => item.count > 0);
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-gradient-primary text-primary-foreground shadow-elegant">
         <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <BookOpen className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">LibraryManager Pro</h1>
-                  <p className="text-primary-foreground/80">Digital Book Management System</p>
-                </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <BookOpen className="h-6 w-6" />
               </div>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-primary-foreground/80">
-                  <User className="h-4 w-4" />
-                  <span className="text-sm">Admin</span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  onClick={() => {
-                    // This will be connected to authentication once Supabase is integrated
-                    toast({
-                      title: "Authentication Required",
-                      description: "Please integrate Supabase for full authentication features",
-                    });
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
+              <div>
+                <h1 className="text-2xl font-bold">LibraryManager Pro</h1>
+                <p className="text-primary-foreground/80">Digital Book Management System</p>
               </div>
             </div>
+          </div>
         </div>
       </header>
 
@@ -290,77 +253,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Charts Section */}
-        {books.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle>Book Status Distribution</CardTitle>
-                <CardDescription>Available vs Issued books overview</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-book-success rounded-full"></div>
-                      <span className="text-sm">Available Books</span>
-                    </div>
-                    <span className="font-semibold">{stats.available} ({((stats.available / stats.total) * 100).toFixed(1)}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-3">
-                    <div 
-                      className="bg-book-success h-3 rounded-full transition-all duration-300" 
-                      style={{ width: `${(stats.available / stats.total) * 100}%` }}
-                    ></div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-book-warning rounded-full"></div>
-                      <span className="text-sm">Issued Books</span>
-                    </div>
-                    <span className="font-semibold">{stats.issued} ({((stats.issued / stats.total) * 100).toFixed(1)}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-3">
-                    <div 
-                      className="bg-book-warning h-3 rounded-full transition-all duration-300" 
-                      style={{ width: `${(stats.issued / stats.total) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle>Popular Genres</CardTitle>
-                <CardDescription>Most common book genres in your library</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {genreData.slice(0, 5).map((item, index) => (
-                    <div key={item.genre} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-book-primary rounded-full"></div>
-                        <span className="text-sm font-medium">{item.genre}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-book-primary h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${(item.count / Math.max(...genreData.map(g => g.count))) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-semibold w-8 text-right">{item.count}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Controls */}
         <Card className="mb-8 shadow-soft">
           <CardHeader>
@@ -410,33 +302,23 @@ const Dashboard = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
                         placeholder="Enter author name"
                       />
-                     </div>
-                     <div>
-                       <Label htmlFor="genre">Genre</Label>
-                       <Select 
-                         value={formData.genre} 
-                         onValueChange={(value) => setFormData(prev => ({ ...prev, genre: value }))}
-                       >
-                         <SelectTrigger>
-                           <SelectValue placeholder="Select genre" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           {GENRES.map(genre => (
-                             <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
-                     </div>
-                     <div>
-                       <Label htmlFor="description">Description</Label>
-                       <Textarea
-                         id="description"
-                         value={formData.description}
-                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                         placeholder="Enter a brief description of the book"
-                         rows={3}
-                       />
-                     </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="genre">Genre</Label>
+                      <Select 
+                        value={formData.genre} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, genre: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select genre" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENRES.map(genre => (
+                            <SelectItem key={genre} value={genre}>{genre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div>
                       <Label htmlFor="status">Status</Label>
                       <Select 
@@ -574,7 +456,6 @@ const Dashboard = () => {
                        </h3>
                        <p className="text-muted-foreground text-sm mb-1">by {book.author}</p>
                        <p className="text-muted-foreground text-xs mb-2">ISBN: {book.isbn}</p>
-                       <p className="text-muted-foreground text-xs mb-2 line-clamp-2">{book.description}</p>
                        <Badge 
                          variant="secondary" 
                          className="text-xs"
@@ -656,32 +537,22 @@ const Dashboard = () => {
                               placeholder="Enter author name"
                             />
                           </div>
-                           <div>
-                             <Label htmlFor="edit-genre">Genre</Label>
-                             <Select 
-                               value={formData.genre} 
-                               onValueChange={(value) => setFormData(prev => ({ ...prev, genre: value }))}
-                             >
-                               <SelectTrigger>
-                                 <SelectValue placeholder="Select genre" />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 {GENRES.map(genre => (
-                                   <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
-                           </div>
-                           <div>
-                             <Label htmlFor="edit-description">Description</Label>
-                             <Textarea
-                               id="edit-description"
-                               value={formData.description}
-                               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                               placeholder="Enter a brief description of the book"
-                               rows={3}
-                             />
-                           </div>
+                          <div>
+                            <Label htmlFor="edit-genre">Genre</Label>
+                            <Select 
+                              value={formData.genre} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, genre: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select genre" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {GENRES.map(genre => (
+                                  <SelectItem key={genre} value={genre}>{genre}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div>
                             <Label htmlFor="edit-status">Status</Label>
                             <Select 
