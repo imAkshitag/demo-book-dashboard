@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { BookOpen, Plus, Search, Edit, Trash2, Library, BookMarked, Users, BarChart3, ArrowUpDown, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { ChartContainer } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 interface Book {
   id: string;
@@ -251,6 +253,28 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Modern Book Stats Graph */}
+        <div className="mb-8 bg-background rounded-lg shadow-soft p-6">
+          <h2 className="text-xl font-semibold mb-4">Book Statistics Overview</h2>
+          <ChartContainer config={{
+            total: { label: "Total Books", color: "#6366f1" },
+            available: { label: "Available", color: "#22c55e" },
+            issued: { label: "Issued", color: "#f59e42" }
+          }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={[stats]} barCategoryGap={40}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" type="category" tick={false} />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="total" fill="#6366f1" name="Total Books" radius={[8,8,0,0]} />
+                <Bar dataKey="available" fill="#22c55e" name="Available" radius={[8,8,0,0]} />
+                <Bar dataKey="issued" fill="#f59e42" name="Issued" radius={[8,8,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
         </div>
 
         {/* Controls */}
