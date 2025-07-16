@@ -6,17 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, Edit, Trash2, Library, BookMarked, Users, BarChart3 } from "lucide-react";
+import { BookOpen, Plus, Search, Edit, Trash2, Library, BookMarked, Users, BarChart3, ArrowUpDown, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface Book {
   id: string;
+  isbn: string;
   title: string;
   author: string;
   genre: string;
   status: "Available" | "Issued";
   dateAdded: string;
+  lastUpdated: string;
 }
 
 const GENRES = [
@@ -40,7 +42,10 @@ const Dashboard = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [sortBy, setSortBy] = useState("title");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [formData, setFormData] = useState({
+    isbn: "",
     title: "",
     author: "",
     genre: "",
@@ -61,25 +66,27 @@ const Dashboard = () => {
   }, [books]);
 
   const resetForm = () => {
-    setFormData({ title: "", author: "", genre: "", status: "Available" });
+    setFormData({ isbn: "", title: "", author: "", genre: "", status: "Available" });
     setEditingBook(null);
   };
 
   const handleAddBook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.author || !formData.genre) {
+    if (!formData.isbn || !formData.title || !formData.author || !formData.genre) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all fields including ISBN",
         variant: "destructive"
       });
       return;
     }
 
+    const now = new Date().toLocaleDateString();
     const newBook: Book = {
       id: Date.now().toString(),
       ...formData,
-      dateAdded: new Date().toLocaleDateString()
+      dateAdded: now,
+      lastUpdated: now
     };
 
     setBooks(prev => [...prev, newBook]);
@@ -94,10 +101,10 @@ const Dashboard = () => {
 
   const handleEditBook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingBook || !formData.title || !formData.author || !formData.genre) {
+    if (!editingBook || !formData.isbn || !formData.title || !formData.author || !formData.genre) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all fields including ISBN",
         variant: "destructive"
       });
       return;
@@ -105,7 +112,7 @@ const Dashboard = () => {
 
     setBooks(prev => prev.map(book => 
       book.id === editingBook.id 
-        ? { ...book, ...formData }
+        ? { ...book, ...formData, lastUpdated: new Date().toLocaleDateString() }
         : book
     ));
 
@@ -128,6 +135,7 @@ const Dashboard = () => {
   const startEdit = (book: Book) => {
     setEditingBook(book);
     setFormData({
+      isbn: book.isbn,
       title: book.title,
       author: book.author,
       genre: book.genre,
@@ -135,14 +143,29 @@ const Dashboard = () => {
     });
   };
 
-  const filteredBooks = books.filter(book => {
-    const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         book.author.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGenre = filterGenre === "all" || book.genre === filterGenre;
-    const matchesStatus = filterStatus === "all" || book.status === filterStatus;
-    
-    return matchesSearch && matchesGenre && matchesStatus;
-  });
+  const filteredAndSortedBooks = books
+    .filter(book => {
+      const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           book.isbn.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesGenre = filterGenre === "all" || book.genre === filterGenre;
+      const matchesStatus = filterStatus === "all" || book.status === filterStatus;
+      
+      return matchesSearch && matchesGenre && matchesStatus;
+    })
+    .sort((a, b) => {
+      let aValue = a[sortBy as keyof Book] as string;
+      let bValue = b[sortBy as keyof Book] as string;
+      
+      // Handle date sorting
+      if (sortBy === "dateAdded" || sortBy === "lastUpdated") {
+        aValue = new Date(aValue).getTime().toString();
+        bValue = new Date(bValue).getTime().toString();
+      }
+      
+      const comparison = aValue.localeCompare(bValue);
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
 
   const stats = {
     total: books.length,
@@ -252,16 +275,25 @@ const Dashboard = () => {
                       Add a new book to your library collection
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleAddBook} className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Enter book title"
-                      />
-                    </div>
+                   <form onSubmit={handleAddBook} className="space-y-4">
+                     <div>
+                       <Label htmlFor="isbn">ISBN</Label>
+                       <Input
+                         id="isbn"
+                         value={formData.isbn}
+                         onChange={(e) => setFormData(prev => ({ ...prev, isbn: e.target.value }))}
+                         placeholder="Enter ISBN (e.g., 978-3-16-148410-0)"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="title">Title</Label>
+                       <Input
+                         id="title"
+                         value={formData.title}
+                         onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                         placeholder="Enter book title"
+                       />
+                     </div>
                     <div>
                       <Label htmlFor="author">Author</Label>
                       <Input
@@ -320,44 +352,75 @@ const Dashboard = () => {
               </Dialog>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search books by title or author..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterGenre} onValueChange={setFilterGenre}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by genre" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Genres</SelectItem>
-                  {GENRES.map(genre => (
-                    <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Issued">Issued</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
+           <CardContent>
+             <div className="flex flex-col gap-4">
+               <div className="flex flex-col sm:flex-row gap-4">
+                 <div className="relative flex-1">
+                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                   <Input
+                     placeholder="Search books by title, author, or ISBN..."
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                     className="pl-10"
+                   />
+                 </div>
+                 <Select value={filterGenre} onValueChange={setFilterGenre}>
+                   <SelectTrigger className="w-full sm:w-48">
+                     <SelectValue placeholder="Filter by genre" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="all">All Genres</SelectItem>
+                     {GENRES.map(genre => (
+                       <SelectItem key={genre} value={genre}>{genre}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+                 <Select value={filterStatus} onValueChange={setFilterStatus}>
+                   <SelectTrigger className="w-full sm:w-48">
+                     <SelectValue placeholder="Filter by status" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="all">All Status</SelectItem>
+                     <SelectItem value="Available">Available</SelectItem>
+                     <SelectItem value="Issued">Issued</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+               
+               {/* Sorting Controls */}
+               <div className="flex flex-col sm:flex-row gap-4 items-center">
+                 <div className="flex items-center gap-2">
+                   <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                   <span className="text-sm text-muted-foreground">Sort by:</span>
+                 </div>
+                 <Select value={sortBy} onValueChange={setSortBy}>
+                   <SelectTrigger className="w-full sm:w-48">
+                     <SelectValue />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="title">Title</SelectItem>
+                     <SelectItem value="author">Author</SelectItem>
+                     <SelectItem value="genre">Genre</SelectItem>
+                     <SelectItem value="dateAdded">Date Added</SelectItem>
+                     <SelectItem value="lastUpdated">Last Updated</SelectItem>
+                   </SelectContent>
+                 </Select>
+                 <Select value={sortOrder} onValueChange={setSortOrder}>
+                   <SelectTrigger className="w-full sm:w-32">
+                     <SelectValue />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="asc">Ascending</SelectItem>
+                     <SelectItem value="desc">Descending</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+             </div>
+           </CardContent>
         </Card>
 
         {/* Books Grid */}
-        {filteredBooks.length === 0 ? (
+         {filteredAndSortedBooks.length === 0 ? (
           <Card className="shadow-soft">
             <CardContent className="p-12 text-center">
               <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -382,23 +445,24 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBooks.map(book => (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+             {filteredAndSortedBooks.map(book => (
               <Card key={book.id} className="shadow-soft hover:shadow-book transition-all duration-300 hover:scale-[1.02]">
                 <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-foreground mb-1 line-clamp-2">
-                        {book.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-2">by {book.author}</p>
-                      <Badge 
-                        variant="secondary" 
-                        className="text-xs"
-                      >
-                        {book.genre}
-                      </Badge>
-                    </div>
+                   <div className="flex justify-between items-start mb-4">
+                     <div className="flex-1">
+                       <h3 className="font-semibold text-lg text-foreground mb-1 line-clamp-2">
+                         {book.title}
+                       </h3>
+                       <p className="text-muted-foreground text-sm mb-1">by {book.author}</p>
+                       <p className="text-muted-foreground text-xs mb-2">ISBN: {book.isbn}</p>
+                       <Badge 
+                         variant="secondary" 
+                         className="text-xs"
+                       >
+                         {book.genre}
+                       </Badge>
+                     </div>
                     <Badge 
                       variant={book.status === "Available" ? "default" : "secondary"}
                       className={cn(
@@ -412,9 +476,18 @@ const Dashboard = () => {
                     </Badge>
                   </div>
                   
-                  <div className="text-xs text-muted-foreground mb-4">
-                    Added: {book.dateAdded}
-                  </div>
+                   <div className="text-xs text-muted-foreground mb-4 space-y-1">
+                     <div className="flex items-center gap-1">
+                       <Clock className="h-3 w-3" />
+                       <span>Added: {book.dateAdded}</span>
+                     </div>
+                     {book.lastUpdated && book.lastUpdated !== book.dateAdded && (
+                       <div className="flex items-center gap-1">
+                         <Clock className="h-3 w-3" />
+                         <span>Updated: {book.lastUpdated}</span>
+                       </div>
+                     )}
+                   </div>
                   
                   <div className="flex gap-2">
                     <Dialog>
@@ -436,16 +509,25 @@ const Dashboard = () => {
                             Update the book information
                           </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleEditBook} className="space-y-4">
-                          <div>
-                            <Label htmlFor="edit-title">Title</Label>
-                            <Input
-                              id="edit-title"
-                              value={formData.title}
-                              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                              placeholder="Enter book title"
-                            />
-                          </div>
+                         <form onSubmit={handleEditBook} className="space-y-4">
+                           <div>
+                             <Label htmlFor="edit-isbn">ISBN</Label>
+                             <Input
+                               id="edit-isbn"
+                               value={formData.isbn}
+                               onChange={(e) => setFormData(prev => ({ ...prev, isbn: e.target.value }))}
+                               placeholder="Enter ISBN (e.g., 978-3-16-148410-0)"
+                             />
+                           </div>
+                           <div>
+                             <Label htmlFor="edit-title">Title</Label>
+                             <Input
+                               id="edit-title"
+                               value={formData.title}
+                               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                               placeholder="Enter book title"
+                             />
+                           </div>
                           <div>
                             <Label htmlFor="edit-author">Author</Label>
                             <Input
